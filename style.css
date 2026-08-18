@@ -21,7 +21,8 @@ body {
   font-family: var(--font-body);
   overflow: hidden;
   height: 100vh;
-  width: 100vw;
+  height: 100dvh;
+  width: 100%;
 }
 
 /* --- UI UTILS --- */
@@ -168,18 +169,32 @@ body {
 
 /* --- 3. GALLERY --- */
 #screen-gallery {
+  --memory-frame-size: 32vh;
+  --memory-frame-size: 32dvh;
   background: #ffeaa7;
   overflow: hidden;
+  gap: clamp(4px, 1dvh, 10px);
+  padding: clamp(48px, 8dvh, 72px) 12px clamp(8px, 2dvh, 18px);
+}
+
+.gallery-title {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-pixel);
+  font-size: clamp(1.25rem, 3dvh, 2rem);
+  line-height: 1;
 }
 
 .collect-badge {
   position: absolute;
-  top: 80px;
-  left: 30px;
+  top: clamp(58px, 10dvh, 80px);
+  left: clamp(16px, 3vw, 30px);
   background: var(--pop);
   border: 2px solid black;
-  padding: 5px 15px;
+  padding: 4px 12px;
   font-family: var(--font-pixel);
+  font-size: clamp(0.7rem, 1.6dvh, 1rem);
   font-weight: bold;
   transform: rotate(-3deg);
   z-index: 5;
@@ -187,23 +202,26 @@ body {
 
 .film-container {
   display: flex;
-  gap: 20px;
-  padding: 20px;
-  overflow-x: auto;
-  max-width: 100vw;
+  flex: 0 1 auto;
+  gap: clamp(8px, 2vw, 18px);
+  padding: clamp(4px, 1dvh, 10px);
+  overflow: visible;
+  max-width: 100%;
+  min-height: 0;
   align-items: center;
   justify-content: center;
 }
 
 .film-strip {
   background: black;
-  padding: 15px 5px;
+  padding: clamp(5px, 1dvh, 10px) 4px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  border-left: 5px dashed white;
-  border-right: 5px dashed white;
-  box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.2);
+  flex: 0 0 auto;
+  gap: clamp(5px, 1dvh, 10px);
+  border-left: 4px dashed white;
+  border-right: 4px dashed white;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.18);
   transition: 0.3s;
 }
 
@@ -216,21 +234,27 @@ body {
 }
 
 .film-strip:hover {
-  transform: rotate(0deg) scale(1.05) !important;
+  transform: rotate(0deg) scale(1.02) !important;
   z-index: 20;
 }
 
 .photo-frame {
-  width: 290px;
-  height: 340px;
+  width: clamp(
+    84px,
+    min(calc((100vw - 84px) / 2), var(--memory-frame-size)),
+    240px
+  );
+  height: auto;
+  aspect-ratio: 7 / 6;
   background: white;
-  padding: 10px 10px 40px 10px;
+  padding: clamp(5px, 0.8vw, 8px) clamp(5px, 0.8vw, 8px)
+    clamp(18px, 2.4vw, 28px);
   will-change: transform, opacity;
   overflow: hidden;
-  /* Agar gambar tidak keluar bingkai */
 }
 
 .photo-frame img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -249,31 +273,48 @@ body {
 }
 
 @media (max-width:768px) {
-  #screen-gallery h2 {
-    font-size: 1.5rem;
-    margin-top: 60px;
-    margin-bottom: 10px;
-  }
-  
-  .film-container {
-    gap: 10px;
-    padding: 10px;
-  }
-  
-  .film-strip {
-    padding: 8px 4px;
-    gap: 8px;
-  }
-  
-  .photo-frame {
-    width: 130px;
-    height: 170px;
-    padding: 5px 5px 20px 5px;
-  }
-  
   .btn {
     font-size: 0.9rem;
     padding: 10px 20px;
+  }
+}
+
+#screen-gallery > .btn {
+  flex: 0 0 auto;
+  margin-top: 0;
+  padding: clamp(8px, 1.2dvh, 12px) clamp(16px, 3vw, 25px);
+  font-size: clamp(0.85rem, 2dvh, 1.1rem);
+}
+
+@media (hover: none), (max-height: 640px) {
+  .film-strip:hover {
+    transform: rotate(0deg) !important;
+  }
+}
+
+@media (max-height: 520px) {
+  #screen-gallery {
+    --memory-frame-size: 24vh;
+    --memory-frame-size: 24dvh;
+    padding-block: 8px;
+  }
+
+  #screen-gallery .btn-back {
+    top: 10px;
+    left: 10px;
+    padding: 5px 8px;
+    font-size: 0.75rem;
+  }
+
+  .collect-badge {
+    top: 8px;
+    left: 50%;
+    padding: 3px 8px;
+    transform: translateX(-50%) rotate(-2deg);
+  }
+
+  .film-strip:nth-child(n) {
+    transform: none;
   }
 }
 
@@ -456,23 +497,30 @@ body {
 
 /* --- 6. PHOTOBOOTH (CLEAN & PROFESSIONAL) --- */
 #screen-photobooth {
+  --photobooth-slot-size: 18vh;
+  --photobooth-slot-size: 18dvh;
   background: var(--pop);
-  padding: 5px 0;
+  height: 100%;
+  min-height: 0;
+  padding: clamp(5px, 1dvh, 10px) 12px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: clamp(3px, 0.7dvh, 7px);
+  overflow: hidden;
 }
 
 .photostrip-wrapper {
   background: white;
-  padding: 10px;
-  border: 4px solid var(--text);
-  box-shadow: 8px 8px 0 var(--secondary);
+  padding: clamp(4px, 0.8dvh, 8px);
+  border: 3px solid var(--text);
+  box-shadow: 6px 6px 0 var(--secondary);
   position: relative;
-  margin-bottom: 10px;
-  width: auto;
-  max-width: 90vw;
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  width: fit-content;
+  max-width: calc(100vw - 28px);
   display: inline-block;
 }
 
@@ -480,19 +528,19 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: clamp(2px, 0.55dvh, 5px);
   border: 2px dashed var(--primary);
-  padding: 8px;
+  padding: clamp(4px, 0.7dvh, 7px);
   background: #fff;
 }
 
 .strip-header {
   font-family: var(--font-pixel);
   color: var(--text);
-  font-size: 1.2rem;
+  font-size: clamp(0.8rem, 2dvh, 1.1rem);
   text-align: center;
   text-transform: uppercase;
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 
 .slot-container {
@@ -505,20 +553,20 @@ body {
 .photo-slot {
   display: block;
   background: #eee;
-  border: 3px solid #ccc;
-  width: 200px;
-  height: 150px;
+  border: 2px solid #ccc;
+  width: clamp(
+    48px,
+    min(calc(100vw - 64px), var(--photobooth-slot-size)),
+    160px
+  );
+  height: auto;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
 }
 
 @media (max-width:768px) {
-  .photo-slot {
-    width: 170px;
-    height: 128px;
-  }
-  
   .strip-header {
-    font-size: 1rem;
+    font-size: 0.85rem;
   }
   
   .strip-footer {
@@ -549,15 +597,15 @@ body {
 
 .strip-footer {
   font-family: var(--font-pixel);
-  font-size: 0.8rem;
+  font-size: clamp(0.6rem, 1.5dvh, 0.75rem);
   text-align: center;
-  margin-top: 5px;
+  margin-top: 0;
   color: var(--secondary);
 }
 
 .sticker {
   position: absolute;
-  font-size: 2.5rem;
+  font-size: clamp(1.5rem, 4dvh, 2.25rem);
   pointer-events: none;
   z-index: 10;
   filter: drop-shadow(4px 4px 0 rgba(0, 0, 0, 0.1));
@@ -1188,46 +1236,46 @@ input:checked + .slider:before {
 
 #screen-photobooth .btn-container {
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  width: 100%;
+  gap: clamp(3px, 0.6dvh, 6px);
+  width: min(100%, 400px);
   max-width: 400px;
-  /* Batasi lebar agar rapi di desktop */
-  margin: 0 auto;
+  margin: 0;
+  padding: 0 6px;
 }
 
-#saveOptions .btn {
-  font-size: 0.9rem;
-  /* Sedikit mengecilkan font tombol save agar muat */
-  padding: 10px;
+#screen-photobooth .timer-option {
+  flex: 0 0 auto;
+  margin-bottom: 0 !important;
+}
+
+#screen-photobooth .btn-container > .btn {
+  margin-top: 0 !important;
+  padding: clamp(7px, 1dvh, 10px) clamp(12px, 2vw, 20px);
+  font-size: clamp(0.78rem, 1.8dvh, 0.95rem);
+  line-height: 1.1;
 }
 
 /* --- 1. REVISI LAYOUT TOMBOL (HORIZONTAL) --- */
 #saveOptions {
   display: none;
-  /* Default hidden */
   flex-direction: row;
-  /* Berjejer ke samping */
   justify-content: center;
-  gap: 10px;
-  /* Jarak antar tombol */
+  gap: clamp(4px, 1vw, 8px);
   width: 100%;
-  margin-top: 10px;
+  margin-top: 0 !important;
 }
 
-/* Tombol kecil di dalam baris saveOptions */
 #saveOptions .btn {
   flex: 1;
-  /* Lebar rata */
-  padding: 10px 5px;
-  /* Padding lebih kecil biar muat */
-  font-size: 0.8rem;
-  /* Font dikecilkan sedikit */
+  margin-top: 0;
+  padding: clamp(6px, 0.9dvh, 8px) 4px;
+  font-size: clamp(0.65rem, 1.5dvh, 0.78rem);
+  line-height: 1.1;
   white-space: nowrap;
-  /* Teks jangan turun baris */
   min-width: 0;
-  /* Mencegah overflow flex item */
 }
 
 /* --- 2. REVISI POSISI TIMER (POJOK KANAN ATAS SLOT) --- */
@@ -1245,7 +1293,7 @@ input:checked + .slider:before {
   transform: none;
   /* Hapus centering sebelumnya */
   /* Style Tetap KUNING TEGAS (Original) */
-  font-size: 3.5rem;
+  font-size: clamp(1.75rem, 7dvh, 3rem);
   /* Ukuran disesuaikan (tidak sebesar sebelumnya) */
   font-family: 'Pixelify Sans', cursive;
   font-weight: 700;
@@ -1261,4 +1309,29 @@ input:checked + .slider:before {
   pointer-events: none;
   display: none;
   /* Hidden by default */
+}
+
+@media (max-height: 520px) {
+  #screen-photobooth {
+    --photobooth-slot-size: 15vh;
+    --photobooth-slot-size: 15dvh;
+    padding-block: 4px;
+  }
+
+  #screen-photobooth .btn-back {
+    top: 10px;
+    left: 10px;
+    padding: 5px 8px;
+    font-size: 0.75rem;
+  }
+
+  #screen-photobooth .photostrip-inner {
+    gap: 2px;
+    padding: 3px;
+  }
+
+  #screen-photobooth .btn-container > .btn,
+  #screen-photobooth #saveOptions .btn {
+    padding-block: 5px;
+  }
 }
