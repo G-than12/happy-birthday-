@@ -38,7 +38,7 @@ The experience starts on a locked screen. Tap the lock icon to unlock the websit
 
 ### 2. Welcome Screen
 
-The animated intro welcomes Citra into her new era. After the animation finishes, the website automatically continues to the memories screen.
+The animated intro welcomes into her new era. After the animation finishes, the website automatically continues to the memories screen.
 
 ### 3. Memories Gallery
 
@@ -58,7 +58,7 @@ Take four photos to fill the photo strip. Shots can be taken instantly or with a
 
 ### 7. Flower Gift
 
-An animated flower garden appears with the message **Keep Blooming Citra!** Press **See surprise** to open the next celebration screen.
+An animated flower garden appears with the message **Keep Blooming!** Press **See surprise** to open the next celebration screen.
 
 ### 8. Fireworks
 
@@ -66,7 +66,7 @@ The celebration continues with a full-screen fireworks animation. Press the butt
 
 ### 9. Future Message
 
-Write a personal wish for Citra at level 25, then press **SIMPAN KAPSUL WAKTU** to download and keep the time-capsule message. Press **A Song** to continue.
+Write a personal wish for at level 25, then press **SIMPAN KAPSUL WAKTU** to download and keep the time-capsule message. Press **A Song** to continue.
 
 ### 10. Music Player
 
@@ -74,7 +74,7 @@ The birthday soundtrack is presented as a spinning vinyl player. The center cont
 
 ### 11. Favorite Planet
 
-The journey ends with an interactive Saturn scene representing Citra's favorite planet. Use **BACK** at any time to revisit the previous screen.
+The journey ends with an interactive Saturn scene representing favorite planet. Use **BACK** at any time to revisit the previous screen.
 
 ```text
 Lock → Welcome → Memories → Letter → Make a Wish → Photobooth
