@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
@@ -61,9 +61,11 @@
       let handX = 0,
         handY = 0;
       let targetZoom = 17;
+      let activeHands = null,
+        activeCam = null;
 
-      // Jumlah partikel (tetap tinggi untuk detail)
-      const PARTICLE_COUNT = 230000;
+      // Jumlah partikel optimal (sangat padat tapi ringan di GPU)
+      const PARTICLE_COUNT = window.innerWidth < 768 ? 40000 : 75000;
 
       function initThree() {
         scene = new THREE.Scene();
@@ -73,31 +75,36 @@
           45,
           window.innerWidth / window.innerHeight,
           0.1,
-          2000
+          2000,
         );
         camera.position.z = 40;
         camera.position.y = 10;
         camera.lookAt(0, 0, 0);
 
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          alpha: false,
+          powerPreference: "high-performance",
+        });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 
         // Tone Mapping
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 0.8;
 
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // Bloom (Glow)
+        // Bloom (Glow) dioptimalkan dengan half-resolution render pass
         const renderScene = new THREE.RenderPass(scene, camera);
         const bloomPass = new THREE.UnrealBloomPass(
-          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          new THREE.Vector2(
+            Math.floor(window.innerWidth / 2),
+            Math.floor(window.innerHeight / 2),
+          ),
           1.5,
           0.4,
-          0.85
+          0.85,
         );
         bloomPass.strength = 0.35;
         bloomPass.radius = 0.5;
@@ -158,7 +165,7 @@
             0,
             b.y * 512,
             0,
-            (b.y + b.h) * 512
+            (b.y + b.h) * 512,
           );
           grad.addColorStop(0, "rgba(0,0,0,0)");
           grad.addColorStop(0.2, b.c);
@@ -279,11 +286,11 @@
 
         geometry.setAttribute(
           "position",
-          new THREE.Float32BufferAttribute(positions, 3)
+          new THREE.Float32BufferAttribute(positions, 3),
         );
         geometry.setAttribute(
           "color",
-          new THREE.Float32BufferAttribute(colors, 3)
+          new THREE.Float32BufferAttribute(colors, 3),
         );
 
         const canvas = document.createElement("canvas");
@@ -298,7 +305,7 @@
         const sprite = new THREE.CanvasTexture(canvas);
 
         const material = new THREE.PointsMaterial({
-          size: 0.08,
+          size: 0.1,
           map: sprite,
           vertexColors: true,
           blending: THREE.AdditiveBlending,
@@ -314,11 +321,11 @@
       function createStars() {
         const geo = new THREE.BufferGeometry();
         const pos = [];
-        for (let i = 0; i < 5000; i++) {
+        for (let i = 0; i < 3000; i++) {
           pos.push(
             (Math.random() - 0.5) * 800,
             (Math.random() - 0.5) * 800,
-            (Math.random() - 0.5) * 800
+            (Math.random() - 0.5) * 800,
           );
         }
         geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
@@ -333,47 +340,126 @@
       }
 
       // ============================================
-      // HAND TRACKING
+      // MOUSE / TOUCH DRAG & ZOOM CONTROLS (RINGAN & RESPONSIF)
+      // ============================================
+      let isDragging = false;
+      let prevMouseX = 0,
+        prevMouseY = 0;
+      window.addEventListener("pointerdown", (e) => {
+        isDragging = true;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+      });
+      window.addEventListener("pointermove", (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - prevMouseX;
+        const dy = e.clientY - prevMouseY;
+        handX += dx * 0.005;
+        handY += dy * 0.005;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+      });
+      window.addEventListener("pointerup", () => {
+        isDragging = false;
+      });
+      window.addEventListener("pointercancel", () => {
+        isDragging = false;
+      });
+      window.addEventListener(
+        "wheel",
+        (e) => {
+          targetZoom = Math.max(12, Math.min(80, targetZoom + e.deltaY * 0.03));
+        },
+        { passive: true },
+      );
+
+      // ============================================
+      // HAND TRACKING (LITE & OPTIMIZED)
       // ============================================
       function initHandTracking() {
         const video = document.getElementById("input_video");
-        const hands = new Hands({
-          locateFile: (file) =>
-            `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-        });
-        hands.setOptions({
-          maxNumHands: 1,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-        hands.onResults((results) => {
-          if (
-            results.multiHandLandmarks &&
-            results.multiHandLandmarks.length > 0
-          ) {
-            const lm = results.multiHandLandmarks[0];
-            handX = (lm[9].x - 0.5) * 4;
-            handY = (lm[9].y - 0.5) * 2;
+        if (
+          !video ||
+          !navigator.mediaDevices ||
+          !navigator.mediaDevices.getUserMedia
+        )
+          return;
+        try {
+          const hands = new Hands({
+            locateFile: (file) =>
+              `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+          });
+          hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 0, // Lite model for minimal CPU/GPU overhead
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+          });
+          hands.onResults((results) => {
+            if (
+              results.multiHandLandmarks &&
+              results.multiHandLandmarks.length > 0
+            ) {
+              const lm = results.multiHandLandmarks[0];
+              handX = (lm[9].x - 0.5) * 4;
+              handY = (lm[9].y - 0.5) * 2;
 
-            const wrist = lm[0];
-            const mid = lm[9];
-            const size = Math.sqrt(
-              Math.pow(wrist.x - mid.x, 2) + Math.pow(wrist.y - mid.y, 2)
-            );
-            let targetZ = 40 - size * 80;
-            targetZoom = Math.max(12, Math.min(80, targetZ));
-          }
-        });
-        const cam = new Camera(video, {
-          onFrame: async () => {
-            await hands.send({ image: video });
-          },
-          width: 640,
-          height: 480,
-        });
-        cam.start();
+              const wrist = lm[0];
+              const mid = lm[9];
+              const size = Math.sqrt(
+                Math.pow(wrist.x - mid.x, 2) + Math.pow(wrist.y - mid.y, 2),
+              );
+              let targetZ = 40 - size * 80;
+              targetZoom = Math.max(12, Math.min(80, targetZ));
+            }
+          });
+          activeHands = hands;
+
+          const cam = new Camera(video, {
+            onFrame: async () => {
+              try {
+                if (activeHands) {
+                  await activeHands.send({ image: video });
+                }
+              } catch (e) {}
+            },
+            width: 320,
+            height: 240,
+          });
+          activeCam = cam;
+          cam.start().catch((err) => {
+            console.log("Webcam tracking optional / unavailable:", err);
+          });
+        } catch (err) {
+          console.log("Hand tracking init error:", err);
+        }
       }
+
+      function stopSaturnCamera() {
+        if (activeCam) {
+          try {
+            activeCam.stop();
+          } catch (e) {}
+          activeCam = null;
+        }
+        if (activeHands) {
+          try {
+            activeHands.close();
+          } catch (e) {}
+          activeHands = null;
+        }
+        const video = document.getElementById("input_video");
+        if (video && video.srcObject) {
+          try {
+            video.srcObject.getTracks().forEach((track) => track.stop());
+          } catch (e) {}
+          video.srcObject = null;
+        }
+      }
+
+      window.stopSaturnCamera = stopSaturnCamera;
+      window.addEventListener("beforeunload", stopSaturnCamera);
+      window.addEventListener("pagehide", stopSaturnCamera);
 
       function animate() {
         requestAnimationFrame(animate);
@@ -402,6 +488,7 @@
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         composer.setSize(window.innerWidth, window.innerHeight);
       });
 
