@@ -37,15 +37,17 @@ body {
   align-items: center;
   justify-content: center;
   background: var(--bg);
-  transition: 0.5s ease-in-out;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   z-index: 0;
 }
 
 .screen.active {
+  display: flex;
   opacity: 1;
-  pointer-events: all;
+  visibility: visible;
+  pointer-events: auto;
   z-index: 10;
 }
 
@@ -669,6 +671,19 @@ body {
   z-index: 10;
 }
 
+/* OPTIMASI PERFORMA: Bekukan 300+ animasi bunga saat user tidak berada di slide bunga */
+#screen-flower:not(.active) .flowers,
+#screen-flower:not(.active) .flowers *,
+#screen-flower:not(.active) .night,
+#screen-flower:not(.active) .night * {
+  animation-play-state: paused !important;
+}
+
+.flowers,
+.flower {
+  will-change: transform;
+}
+
 /* --- PERBAIKAN POSISI BUNGA (FIX) --- */
 
 /* 1. Pastikan wadah slide menjadi acuan posisi */
@@ -742,37 +757,6 @@ body {
   pointer-events: auto !important;
   position: relative;
   z-index: 9999 !important;
-  /* Angka z-index harus sangat tinggi */
-}
-
-/* Cari bagian ini di CSS kamu */
-
-.screen {
-  display: none;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  /* --- TAMBAHKAN/PASTIKAN 3 BARIS INI ADA --- */
-  opacity: 0;
-  visibility: hidden;
-  /* Menyembunyikan elemen dari jangkauan klik */
-  pointer-events: none;
-  /* PENTING: Memastikan layar non-aktif TIDAK BISA DIKLIK */
-  transition: all 0.8s ease-in-out;
-  /* Transisi tetap halus */
-}
-
-.screen.active {
-  display: flex;
-  /* --- TAMBAHKAN/PASTIKAN 3 BARIS INI ADA --- */
-  opacity: 1;
-  visibility: visible;
-  /* Munculkan kembali */
-  pointer-events: auto;
-  /* PENTING: Izinkan klik HANYA pada layar aktif */
-  z-index: 2;
 }
 
 /* --- Setting Slide Kembang Api --- */
@@ -783,18 +767,23 @@ body {
   /* Hapus padding biar full layar */
   overflow: hidden;
   /* Hilangkan scrollbar ganda */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 
 /* --- Setting Iframe --- */
 .fireworks-frame {
-  width: 100vw;
-  /* Lebar 100% layar device */
-  height: 100vh;
-  /* Tinggi 100% layar device */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   border: none;
-  /* Hilangkan garis bingkai */
   display: block;
-  /* Agar tidak ada celah di bawah */
+  z-index: 1;
 }
 
 /* Memastikan tombol back tetap terlihat di atas kembang api */
@@ -803,7 +792,18 @@ body {
   top: 20px;
   left: 20px;
   z-index: 9999;
-  /* Lapisan paling atas */
+}
+
+#screen-fireworks .btn-container {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  width: 100%;
+  max-width: 400px;
+  padding: 0 15px;
+  pointer-events: auto;
 }
 
 
