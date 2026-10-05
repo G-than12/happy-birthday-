@@ -26,11 +26,11 @@ function getDefaultScaleFactor() {
 
 let stageW, stageH;
 
-// UBAH JADI INI (Agar defaultnya Normal/Sedang)
-let quality = 1; // 1=Low, 2=Normal, 3=High
+// Default to Normal Quality for smooth 60fps performance
+let quality = 2; // 1=Low, 2=Normal, 3=High
 let isLowQuality = false;
-let isNormalQuality = false; // Aktifkan yang normal
-let isHighQuality = true; // Matikan yang tinggi
+let isNormalQuality = true;
+let isHighQuality = false;
 
 const QUALITY_LOW = 1;
 const QUALITY_NORMAL = 2;
@@ -112,7 +112,7 @@ const store = {
     openHelpTopic: null,
 
     config: {
-      quality: String(IS_HIGH_END_DEVICE ? QUALITY_HIGH : QUALITY_NORMAL),
+      quality: String(QUALITY_NORMAL),
       shell: "Random",
       size: IS_DESKTOP ? "3" : IS_HEADER ? "1.2" : "2",
       wordShell: true,
@@ -138,62 +138,52 @@ const store = {
   },
 
   load() {
-    const serializedData = localStorage.getItem("cm_fireworks_data");
-    if (serializedData) {
-      const { schemaVersion, data } = JSON.parse(serializedData);
+    try {
+      const serializedData = localStorage.getItem("cm_fireworks_data");
+      if (serializedData) {
+        const { schemaVersion, data } = JSON.parse(serializedData);
 
-      const config = this.state.config;
-      switch (schemaVersion) {
-        case "1.1":
-          config.quality = data.quality;
-          config.size = data.size;
-          config.skyLighting = data.skyLighting;
-          break;
-        case "1.2":
-          config.quality = data.quality;
-          config.size = data.size;
-          config.skyLighting = data.skyLighting;
-          config.scaleFactor = data.scaleFactor;
-          break;
-        default:
-          throw new Error("version switch should be exhaustive");
+        const config = this.state.config;
+        switch (schemaVersion) {
+          case "1.1":
+            config.quality = data.quality;
+            config.size = data.size;
+            config.skyLighting = data.skyLighting;
+            break;
+          case "1.2":
+            config.quality = data.quality;
+            config.size = data.size;
+            config.skyLighting = data.skyLighting;
+            config.scaleFactor = data.scaleFactor;
+            break;
+          default:
+            break;
+        }
       }
-      console.log(`Loaded config (schema version ${schemaVersion})`);
-    }
-    // Deprecated data format. Checked with care (it's not namespaced).
-    else if (localStorage.getItem("schemaVersion") === "1") {
-      let size;
-      // Attempt to parse data, ignoring if there is an error.
-      try {
-        const sizeRaw = localStorage.getItem("configSize");
-        size = typeof sizeRaw === "string" && JSON.parse(sizeRaw);
-      } catch (e) {
-        console.log("Recovered from error parsing saved config:");
-        console.error(e);
-        return;
-      }
-      // Only restore validated values
-      const sizeInt = parseInt(size, 10);
-      if (sizeInt >= 0 && sizeInt <= 4) {
-        this.state.config.size = String(sizeInt);
-      }
+    } catch (e) {
+      // LocalStorage might be restricted in file:// or sandboxed iframes
+      console.warn("Storage access restricted:", e);
     }
   },
 
   persist() {
-    const config = this.state.config;
-    localStorage.setItem(
-      "cm_fireworks_data",
-      JSON.stringify({
-        schemaVersion: "1.2",
-        data: {
-          quality: config.quality,
-          size: config.size,
-          skyLighting: config.skyLighting,
-          scaleFactor: config.scaleFactor,
-        },
-      })
-    );
+    try {
+      const config = this.state.config;
+      localStorage.setItem(
+        "cm_fireworks_data",
+        JSON.stringify({
+          schemaVersion: "1.2",
+          data: {
+            quality: config.quality,
+            size: config.size,
+            skyLighting: config.skyLighting,
+            scaleFactor: config.scaleFactor,
+          },
+        })
+      );
+    } catch (e) {
+      // Silently ignore storage errors
+    }
   },
 };
 
@@ -2818,14 +2808,15 @@ const soundManager = {
               new Promise((resolve) => {
                 this.ctx.decodeAudioData(data, resolve);
               })
-          );
+          )
+          .catch(() => null);
 
         filePromises.push(promise);
         allFilePromises.push(promise);
       });
 
       Promise.all(filePromises).then((buffers) => {
-        source.buffers = buffers;
+        source.buffers = buffers.filter(Boolean);
       });
     });
 
@@ -2833,14 +2824,14 @@ const soundManager = {
   },
 
   pauseAll() {
-    this.ctx.suspend();
+    if (this.ctx && this.ctx.suspend) this.ctx.suspend();
   },
 
   resumeAll() {
     this.playSound("lift", 0);
 
     setTimeout(() => {
-      this.ctx.resume();
+      if (this.ctx && this.ctx.resume) this.ctx.resume();
     }, 250);
   },
 
@@ -2870,8 +2861,8 @@ const soundManager = {
 
     const source = this.sources[type];
 
-    if (!source) {
-      throw new Error(`Sound of type "${type}" doesn't exist.`);
+    if (!source || !source.buffers || !source.buffers.length) {
+      return;
     }
 
     const initialVolume = source.volume;
@@ -2888,6 +2879,7 @@ const soundManager = {
     gainNode.gain.value = scaledVolume;
 
     const buffer = MyMath.randomChoice(source.buffers);
+    if (!buffer) return;
     const bufferSource = this.ctx.createBufferSource();
     bufferSource.playbackRate.value = scaledPlaybackRate;
     bufferSource.buffer = buffer;
@@ -2898,7 +2890,8 @@ const soundManager = {
 };
 
 function setLoadingStatus(status) {
-  document.querySelector(".loading-init__status").textContent = status;
+  const el = document.querySelector(".loading-init__status");
+  if (el) el.textContent = status;
 }
 
 if (IS_HEADER) {
@@ -2907,12 +2900,6 @@ if (IS_HEADER) {
   // Allow status to render, then preload assets and start app.
   setLoadingStatus("");
   setTimeout(() => {
-    var promises = [soundManager.preload()];
-
-    Promise.all(promises).then(init, (reason) => {
-      console.log("");
-      init();
-      return Promise.reject(reason);
-    });
+    soundManager.preload().then(init).catch(() => init());
   }, 0);
 }
