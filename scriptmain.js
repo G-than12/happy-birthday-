@@ -15,6 +15,7 @@ const screenOrder = [
 
 // Variabel Global
 let cakeCamera = null;
+let cakeHands = null;
 
 // --- 1. FUNGSI UNTUK RESET ANIMASI BUNGA ---
 function replayFlowerAnimation() {
@@ -66,7 +67,8 @@ function resetScreenState(screenId) {
     const cakeImg = document.getElementById("cakeImg");
     if (cakeImg) cakeImg.src = "assets/cake_unlit.gif";
 
-    document.getElementById("matchImg").style.display = "none";
+    const matchImg = document.getElementById("matchImg");
+    if (matchImg) matchImg.style.display = "none";
 
     const statusText = document.getElementById("statusText");
     if (statusText) {
@@ -74,7 +76,8 @@ function resetScreenState(screenId) {
       statusText.style.background = "var(--text)";
     }
 
-    document.getElementById("startCamBtn").style.display = "inline-block";
+    const startBtn = document.getElementById("startCamBtn");
+    if (startBtn) startBtn.style.display = "inline-block";
 
     const nextBtns = document.querySelectorAll(
       "#screen-cake .btn-pop:not(#startCamBtn)"
@@ -82,14 +85,16 @@ function resetScreenState(screenId) {
     nextBtns.forEach((btn) => btn.remove());
   }
   if (screenId === "screen-photobooth") {
-    if (pbStream) pbStream.getTracks().forEach((track) => track.stop());
-    // Stop looping render (PENTING)
+    if (pbStream) {
+      pbStream.getTracks().forEach((track) => track.stop());
+      pbStream = null;
+    }
     if (renderInterval) {
       clearInterval(renderInterval);
-      renderInterval = null; // Pastikan variabel dinull-kan
+      renderInterval = null;
     }
-    clearInterval(renderInterval);
-    resetPhotobooth();
+    const pbVideoEl = document.getElementById("pb-video");
+    if (pbVideoEl) pbVideoEl.srcObject = null;
   }
 }
 
@@ -104,15 +109,34 @@ function stopCakeCamera() {
     cakeCamera = null;
   }
 
-  // 2. Matikan Stream Webcam (Hardware)
+  // 2. Matikan MediaPipe Hands instance
+  if (cakeHands) {
+    try {
+      cakeHands.close();
+    } catch (e) {}
+    cakeHands = null;
+  }
+
+  // 3. Matikan Stream Webcam (Hardware)
   const videoEl = document.getElementById("webcam");
   if (videoEl && videoEl.srcObject) {
     const tracks = videoEl.srcObject.getTracks();
     tracks.forEach((track) => {
       track.stop(); // Matikan lampu kamera
-      videoEl.srcObject.removeTrack(track); // Lepas track
+      try {
+        videoEl.srcObject.removeTrack(track); // Lepas track
+      } catch (e) {}
     });
     videoEl.srcObject = null;
+  }
+
+  // 4. Matikan Audio Context & mic analyser (Hentikan loop mic)
+  if (audioCtx) {
+    try {
+      audioCtx.close();
+    } catch (e) {}
+    audioCtx = null;
+    analyser = null;
   }
 }
 
@@ -155,10 +179,31 @@ function nextScreen(currentId, nextId) {
     stopCakeCamera();
   }
 
-  // Matikan Iframe Planet (Agar tidak berat)
+  // Stop Kamera Photobooth & render loop saat keluar ke layar lain
+  if (currentId === "screen-photobooth") {
+    if (pbStream) {
+      pbStream.getTracks().forEach((track) => track.stop());
+      pbStream = null;
+    }
+    if (renderInterval) {
+      clearInterval(renderInterval);
+      renderInterval = null;
+    }
+    const pbVideoEl = document.getElementById("pb-video");
+    if (pbVideoEl) pbVideoEl.srcObject = null;
+  }
+
+  // Matikan Iframe Planet (Agar tidak berat dan putus stream kamera)
   if (currentId === "screen-planet") {
     const frame = document.getElementById("frame-planet");
-    if (frame) frame.src = "";
+    if (frame) {
+      try {
+        if (frame.contentWindow && typeof frame.contentWindow.stopSaturnCamera === "function") {
+          frame.contentWindow.stopSaturnCamera();
+        }
+      } catch (e) {}
+      frame.src = "";
+    }
   }
 
   // Matikan Iframe Fireworks (Agar tidak berat)
@@ -188,10 +233,9 @@ function nextScreen(currentId, nextId) {
   if (nextId === "screen-fireworks") {
     const frame = document.getElementById("frame-fireworks");
     if (frame) {
-      // Trik: Tambahkan timestamp (?t=...) agar browser TIDAK pakai cache
-      // Ini memaksa kembang api meletus dari awal setiap kali masuk
-      const originalSrc = frame.getAttribute("data-src");
-      frame.src = originalSrc + "?t=" + new Date().getTime();
+      const originalSrc = frame.getAttribute("data-src") || "fireworks/fireworks.html";
+      const isHttp = window.location.protocol.startsWith("http");
+      frame.src = isHttp ? originalSrc + "?t=" + Date.now() : originalSrc;
     }
   }
 
@@ -258,6 +302,36 @@ function prevScreen(currentId, prevId) {
     stopCakeCamera();
   }
 
+  if (currentId === "screen-photobooth") {
+    if (pbStream) {
+      pbStream.getTracks().forEach((track) => track.stop());
+      pbStream = null;
+    }
+    if (renderInterval) {
+      clearInterval(renderInterval);
+      renderInterval = null;
+    }
+    const pbVideoEl = document.getElementById("pb-video");
+    if (pbVideoEl) pbVideoEl.srcObject = null;
+  }
+
+  if (currentId === "screen-planet") {
+    const frame = document.getElementById("frame-planet");
+    if (frame) {
+      try {
+        if (frame.contentWindow && typeof frame.contentWindow.stopSaturnCamera === "function") {
+          frame.contentWindow.stopSaturnCamera();
+        }
+      } catch (e) {}
+      frame.src = "";
+    }
+  }
+
+  if (currentId === "screen-fireworks") {
+    const frame = document.getElementById("frame-fireworks");
+    if (frame) frame.src = "";
+  }
+
   resetScreenState(prevId);
 
   if (prevId === "screen-flower") {
@@ -283,21 +357,33 @@ function prevScreen(currentId, prevId) {
   if (prevId === "screen-fireworks") {
     const frame = document.getElementById("frame-fireworks");
     if (frame) {
-      // Trik: Tambahkan timestamp (?t=...) agar browser TIDAK pakai cache
-      // Ini memaksa kembang api meletus dari awal setiap kali masuk
-      const originalSrc = frame.getAttribute("data-src");
-      frame.src = originalSrc + "?t=" + new Date().getTime();
+      const originalSrc = frame.getAttribute("data-src") || "fireworks/fireworks.html";
+      const isHttp = window.location.protocol.startsWith("http");
+      frame.src = isHttp ? originalSrc + "?t=" + Date.now() : originalSrc;
     }
   }
 
+  // Jika kembali ke Kue Ulang Tahun (misal dari Photobooth):
+  // Kamera otomatis langsung nyala kembali
+  if (prevId === "screen-cake") {
+    setTimeout(() => {
+      initExperience();
+    }, 400);
+  }
+
+  // Jika kembali ke Photobooth (misal dari Bunga):
+  // Pilihan 2: Reset bersih otomatis & kamera langsung nyala di slot 1
   if (prevId === "screen-photobooth") {
     setTimeout(() => {
       resetPhotobooth();
       initPhotobooth();
-    }, 500);
-  } else if (currentId === "screen-photobooth") {
-    if (pbStream) pbStream.getTracks().forEach((track) => track.stop());
-    clearInterval(renderInterval);
+    }, 400);
+  }
+
+  // Jika kembali ke Saturnus:
+  if (prevId === "screen-planet") {
+    const frame = document.getElementById("frame-planet");
+    if (frame) frame.src = frame.getAttribute("data-src");
   }
 
   gsap.to(current, {
@@ -401,6 +487,11 @@ let isLit = false,
 let audioCtx, analyser;
 
 async function initExperience() {
+  // Jika masih ada instance lama, bersihkan dulu
+  if (cakeCamera || cakeHands) {
+    stopCakeCamera();
+  }
+
   startBtn.style.display = "none";
   status.innerText = "Membuka kamera...";
   try {
@@ -414,20 +505,22 @@ async function initExperience() {
     const mic = audioCtx.createMediaStreamSource(stream);
     mic.connect(analyser);
 
-    const hands = new Hands({
+    cakeHands = new Hands({
       locateFile: (file) =>
         `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
     });
-    hands.setOptions({
+    cakeHands.setOptions({
       maxNumHands: 1,
-      modelComplexity: 1,
+      modelComplexity: 0, // Model Lite: jauh lebih ringan & cepat
       minDetectionConfidence: 0.5,
     });
-    hands.onResults(onHandResults);
+    cakeHands.onResults(onHandResults);
 
     cakeCamera = new Camera(video, {
       onFrame: async () => {
-        await hands.send({ image: video });
+        if (cakeHands) {
+          await cakeHands.send({ image: video });
+        }
       },
       width: 320,
       height: 240,
@@ -495,17 +588,33 @@ function triggerCelebration() {
   status.innerHTML = "🎉 HAPPY BIRTHDAY CITRA!! 🎉";
   status.style.background = "#051fc2";
   status.style.color = "white";
+
+  // Matikan mic & sembunyikan korek api agar hemat CPU saat selebrasi
+  // CATATAN: Kamera webcam TETAP NYALA di latar belakang agar transisi ke Photobooth mulus
+  if (audioCtx) {
+    try {
+      audioCtx.close();
+    } catch (e) {}
+    audioCtx = null;
+    analyser = null;
+  }
+  const matchImg = document.getElementById("matchImg");
+  if (matchImg) matchImg.style.display = "none";
+
   confetti({
     particleCount: 200,
     spread: 80,
     colors: ["#051fc2", "#ff005c", "#fff200"],
   });
   setTimeout(() => {
-    const btn = document.createElement("button");
-    btn.className = "btn btn-pop";
-    btn.innerHTML = "LANJUT: PHOTOBOOTH 📸";
-    btn.onclick = () => nextScreen("screen-cake", "screen-photobooth");
-    document.getElementById("screen-cake").appendChild(btn);
+    const existingBtn = document.querySelector("#screen-cake .btn-to-photobooth");
+    if (!existingBtn) {
+      const btn = document.createElement("button");
+      btn.className = "btn btn-pop btn-to-photobooth";
+      btn.innerHTML = "LANJUT: PHOTOBOOTH 📸";
+      btn.onclick = () => nextScreen("screen-cake", "screen-photobooth");
+      document.getElementById("screen-cake").appendChild(btn);
+    }
   }, 2000);
 }
 
@@ -521,8 +630,6 @@ let pbStream = null;
 let renderInterval = null;
 const pbVideo = document.getElementById("pb-video");
 const snapBtn = document.getElementById("snapBtn");
-const saveBtn = document.getElementById("saveBtn"); // Container tombol save
-const resetBtn = document.getElementById("resetBtn");
 const slotNumDisplay = document.getElementById("slotNumDisplay");
 
 // [BARU] Fungsi update text tombol berdasarkan toggle switch
@@ -551,6 +658,15 @@ async function initPhotobooth() {
   const videoElement = document.getElementById("webcam"); // Pastikan referensi ke webcam lama dibersihkan
   if (videoElement && videoElement.srcObject) {
     videoElement.srcObject.getTracks().forEach((t) => t.stop());
+    videoElement.srcObject = null;
+  }
+
+  // Jika stream lama masih ada, matikan dulu
+  if (pbStream) {
+    try {
+      pbStream.getTracks().forEach((t) => t.stop());
+    } catch (e) {}
+    pbStream = null;
   }
 
   try {
@@ -560,10 +676,29 @@ async function initPhotobooth() {
     });
     pbStream = stream;
     pbVideo.srcObject = stream;
-    pbVideo.play();
+    await pbVideo.play().catch(() => {});
 
-    // Reset status slot
-    resetPhotobooth();
+    // Reset status slot & canvas
+    slotsFilled = [false, false, false, false];
+    for (let i = 1; i <= 4; i++) {
+      const cvs = document.getElementById(`slot-${i}`);
+      if (cvs) {
+        const ctx = cvs.getContext("2d");
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+        cvs.classList.remove("filled");
+        cvs.classList.remove("active");
+      }
+    }
+
+    const saveOptions = document.getElementById("saveOptions");
+    if (saveOptions) saveOptions.style.display = "none";
+    if (snapBtn) {
+      snapBtn.style.display = "inline-block";
+      snapBtn.disabled = false;
+    }
+
+    // Aktifkan slot 1 dan mulai render loop kamera
+    activateSlot(1);
 
     // Pastikan UI tombol benar saat awal
     updateButtonText();
@@ -722,17 +857,29 @@ function resetPhotobooth() {
   // Clear semua canvas
   for (let i = 1; i <= 4; i++) {
     const cvs = document.getElementById(`slot-${i}`);
-    const ctx = cvs.getContext("2d");
-    ctx.clearRect(0, 0, cvs.width, cvs.height);
-    cvs.classList.remove("filled");
-    cvs.classList.remove("active");
+    if (cvs) {
+      const ctx = cvs.getContext("2d");
+      ctx.clearRect(0, 0, cvs.width, cvs.height);
+      cvs.classList.remove("filled");
+      cvs.classList.remove("active");
+    }
   }
 
   // Reset UI
-  document.getElementById("saveOptions").style.display = "none";
+  const saveOptions = document.getElementById("saveOptions");
+  if (saveOptions) saveOptions.style.display = "none";
+  if (snapBtn) {
+    snapBtn.style.display = "inline-block";
+    snapBtn.disabled = false;
+  }
 
-  // Aktifkan slot 1 lagi
-  activateSlot(1);
+  // Jika stream belum aktif, inisialisasi kamera; jika sudah, cukup aktifkan slot 1
+  if (!pbStream) {
+    initPhotobooth();
+  } else {
+    // Aktifkan slot 1 lagi
+    activateSlot(1);
+  }
 }
 
 // --- 7. CREATIVE DOWNLOAD ENGINE ---
@@ -826,9 +973,12 @@ function downloadStripHighQuality() {
 // Ini akan membuat animasi dari 4 foto yang sudah diambil
 function createAndDownloadGIF() {
   // --- 1. SETUP TOMBOL (Sesuai Base Code Kamu) ---
-  const btn = event ? event.target : document.getElementById('btn-gif');
+  const btn =
+    typeof event !== "undefined" && event && event.target
+      ? event.target.closest("button") || event.target
+      : document.querySelector("#saveOptions button:nth-child(2)");
   const originalText = btn.innerHTML;
-  btn.innerHTML = "⏳GENERATING GIF";
+  btn.innerHTML = "⏳ GENERATING GIF...";
   btn.disabled = true;
 
   // --- 2. SETUP WORKER (Sesuai Base Code Kamu - TIDAK DIGANTI) ---
@@ -955,15 +1105,6 @@ function toggleLetter(e) {
   const envelope = document.getElementById("envelopeItem");
   envelope.classList.toggle("open");
 }
-function goToCake(e) {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
-  nextScreen("screen-letter", "screen-cake");
-}
-
 function goToCake(event) {
   if (event) {
     event.preventDefault();
