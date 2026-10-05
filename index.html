@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
@@ -20,6 +20,7 @@
     />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Pixelify+Sans:wght@400;700&display=swap"
       rel="stylesheet"
@@ -45,7 +46,7 @@
     ></script>
   </head>
   <body>
-    <audio id="bgm" loop>
+    <audio id="bgm" loop preload="auto">
       <source
         src="assets/LEE SUHYUN - Your Letter (연의 편지).mp3"
         type="audio/mpeg"
@@ -91,18 +92,34 @@
       <div class="film-container">
         <div class="film-strip">
           <div class="photo-frame">
-            <img src="assets/IMG_20240323_173602.jpg" alt="1" />
+            <img
+              src="assets/IMG_20240323_173602.webp"
+              alt="Memory 1"
+              decoding="async"
+            />
           </div>
           <div class="photo-frame">
-            <img src="assets/IMG_20240624_124907.jpg" alt="2" />
+            <img
+              src="assets/IMG_20240624_124907.webp"
+              alt="Memory 2"
+              decoding="async"
+            />
           </div>
         </div>
         <div class="film-strip">
           <div class="photo-frame">
-            <img src="assets/IMG_20240507_165939.jpg" alt="3" />
+            <img
+              src="assets/IMG_20240507_165939.webp"
+              alt="Memory 3"
+              decoding="async"
+            />
           </div>
           <div class="photo-frame">
-            <img src="assets/IMG_20240405_191517.jpg" alt="4" />
+            <img
+              src="assets/IMG_20240405_191517.webp"
+              alt="Memory 4"
+              decoding="async"
+            />
           </div>
         </div>
       </div>
@@ -241,9 +258,12 @@
             id="container-3"
             onclick="activateSlot(3)"
           >
-            <canvas id="slot-3" class="photo-slot" width="640" height="480"
-              >s</canvas
-            >
+            <canvas
+              id="slot-3"
+              class="photo-slot"
+              width="640"
+              height="480"
+            ></canvas>
           </div>
 
           <div
@@ -699,7 +719,7 @@
       >
         <h1
           style="
-            font-family: 'Pixelify Sans', cursive;
+            font-family: &quot;Pixelify Sans&quot;, cursive;
             color: white;
             text-shadow: 2px 2px 0px #000;
             font-size: 2rem;
@@ -719,7 +739,7 @@
           onclick="nextScreen('screen-fireworks', 'screen-capsule')"
           style="margin-bottom: 5px"
         >
-          HAPPY NEW YEAR🎆<br />NEXT CREATE FUTURE MESSAGE
+          CELEBRATE CITRA ✨<br />NEXT: CREATE FUTURE MESSAGE
         </button>
       </div>
     </div>
@@ -843,7 +863,7 @@
       >
         <h2
           style="
-            font-family: 'Pixelify Sans', cursive;
+            font-family: &quot;Pixelify Sans&quot;, cursive;
             color: white;
             text-shadow: 2px 2px 0px #000;
             font-size: 2rem;
